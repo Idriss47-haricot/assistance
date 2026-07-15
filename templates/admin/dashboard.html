@@ -1,0 +1,57 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-stats">
+    <h2>📊 Statistiques Helpdesk</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0;">
+        <div style="background: #007bff; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3>👥 Utilisateurs</h3>
+            <p style="font-size: 2em; margin: 0;">{{ total_users }}</p>
+        </div>
+        <div style="background: #28a745; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3>📝 Tickets</h3>
+            <p style="font-size: 2em; margin: 0;">{{ total_tickets }}</p>
+        </div>
+        <div style="background: #ffc107; color: black; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3>🔄 En cours</h3>
+            <p style="font-size: 2em; margin: 0;">{{ in_progress }}</p>
+        </div>
+        <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3>🔴 Critiques</h3>
+            <p style="font-size: 2em; margin: 0;">{{ critical }}</p>
+        </div>
+    </div>
+    
+    <h3>📋 Derniers tickets</h3>
+    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+        <thead>
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 10px; text-align: left;">Titre</th>
+                <th style="padding: 10px; text-align: left;">Créé par</th>
+                <th style="padding: 10px; text-align: left;">Statut</th>
+                <th style="padding: 10px; text-align: left;">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in recent_tickets %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 10px;">{{ ticket.title }}</td>
+                <td style="padding: 10px;">{{ ticket.created_by.username }}</td>
+                <td style="padding: 10px;">
+                    <span style="background: {% if ticket.status == 'OPEN' %}gray{% elif ticket.status == 'IN_PROGRESS' %}blue{% elif ticket.status == 'RESOLVED' %}green{% else %}dark{% endif %}; color: white; padding: 3px 10px; border-radius: 12px;">
+                        {{ ticket.get_status_display }}
+                    </span>
+                </td>
+                <td style="padding: 10px;">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="padding: 20px; text-align: center;">Aucun ticket</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{{ block.super }}
+{% endblock %}

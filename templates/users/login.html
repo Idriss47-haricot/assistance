@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Connexion - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        padding: 20px;
+    }
+    .login-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 35px;
+        max-width: 420px;
+        width: 100%;
+    }
+    .login-logo {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    .login-logo i {
+        font-size: 3rem;
+        color: #007bff;
+        background: #e9f0ff;
+        padding: 15px 20px;
+        border-radius: 50%;
+    }
+    .login-logo h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 10px 0 0;
+    }
+    .login-logo p {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .form-control {
+        border-radius: 10px;
+        padding: 12px 15px;
+        border: 2px solid #e9ecef;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.15);
+        outline: none;
+    }
+    .btn-login {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-login:hover {
+        background: #0056b3;
+    }
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border-left: 4px solid #dc3545;
+    }
+    .test-accounts {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: center;
+        line-height: 1.8;
+    }
+    .role-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .role-option {
+        text-align: center;
+        padding: 12px 5px;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #f8f9fa;
+    }
+    .role-option:hover {
+        border-color: #007bff;
+        background: #e9f0ff;
+    }
+    .role-option.active {
+        border-color: #007bff;
+        background: #e9f0ff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
+    }
+    .role-option .icon {
+        font-size: 1.5rem;
+        display: block;
+    }
+    .role-option .name {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-logo">
+            <i class="fas fa-ticket-alt"></i>
+            <h1>Helpdesk</h1>
+            <p>Gestion des tickets d'incidents</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="error-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}" id="loginForm">
+            {% csrf_token %}
+            
+            <!-- SÉLECTION DE RÔLE -->
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:8px;">
+                    <i class="fas fa-user-tag"></i> Je suis :
+                </label>
+                <div class="role-grid">
+                    <div class="role-option" onclick="selectRole(this, 'ADMIN')">
+                        <span class="icon">👑</span>
+                        <span class="name">Admin</span>
+                    </div>
+                    <div class="role-option" onclick="selectRole(this, 'MANAGER')">
+                        <span class="icon">👨‍🔧</span>
+                        <span class="name">Manager</span>
+                    </div>
+                    <div class="role-option" onclick="selectRole(this, 'TECHNICIAN')">
+                        <span class="icon">🔧</span>
+                        <span class="name">Technicien</span>
+                    </div>
+                    <div class="role-option" onclick="selectRole(this, 'EMPLOYEE')">
+                        <span class="icon">👤</span>
+                        <span class="name">Employé</span>
+                    </div>
+                </div>
+                <input type="hidden" name="role" id="selectedRole" value="">
+                <small style="color:#6c757d;font-size:0.7rem;">
+                    <i class="fas fa-info-circle"></i> Sélectionnez votre rôle
+                </small>
+            </div>
+
+            <input type="text" name="username" class="form-control" 
+                   placeholder="Nom d'utilisateur" required>
+            
+            <input type="password" name="password" class="form-control" 
+                   placeholder="Mot de passe" required>
+            
+            <div style="margin: 10px 0;">
+                <input type="checkbox" name="remember_me" id="remember_me">
+                <label for="remember_me">Se souvenir de moi</label>
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn" disabled>
+                Se connecter
+            </button>
+        </form>
+
+        <div class="test-accounts">
+            <strong>Comptes de test :</strong><br>
+            👑 admin / Admin123! &nbsp;|&nbsp; 👨‍🔧 manager1 / Manager123!<br>
+            🔧 technicien1 / Technicien123! &nbsp;|&nbsp; 👤 employe1 / Employe123!
+        </div>
+    </div>
+</div>
+
+<script>
+function selectRole(element, role) {
+    document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('active'));
+    element.classList.add('active');
+    document.getElementById('selectedRole').value = role;
+    document.getElementById('loginBtn').disabled = false;
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('selectedRole').value) {
+        e.preventDefault();
+        alert('Veuillez sélectionner votre rôle.');
+    }
+});
+</script>
+{% endblock %}

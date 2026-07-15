@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket {{ ticket.reference }} - Helpdesk</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; background: white; color: #1a1a2e; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 3px solid #007bff; margin-bottom: 25px; }
+        .header h1 { color: #007bff; font-size: 24px; }
+        .header .reference { font-size: 14px; color: #6c757d; }
+        
+        .ticket-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #007bff; }
+        .ticket-info h2 { font-size: 18px; margin-bottom: 10px; color: #1a1a2e; }
+        .ticket-info .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; }
+        .ticket-info .meta strong { color: #495057; }
+        
+        .description { background: white; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 20px; }
+        .description p { font-size: 14px; line-height: 1.6; }
+        
+        .section-title { font-size: 16px; font-weight: 600; color: #007bff; margin: 20px 0 10px; padding-bottom: 5px; border-bottom: 2px solid #e9ecef; }
+        
+        .comment { padding: 10px 0; border-bottom: 1px solid #f1f3f5; }
+        .comment:last-child { border-bottom: none; }
+        .comment .author { font-weight: 600; font-size: 13px; color: #1a1a2e; }
+        .comment .date { font-size: 11px; color: #6c757d; }
+        .comment .content { font-size: 13px; margin-top: 3px; color: #343a40; }
+        .comment.internal { background: #fff3cd; padding: 10px; border-radius: 5px; border-left: 3px solid #ffc107; }
+        
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-critical { background: #dc3545; color: white; }
+        .badge-high { background: #ffc107; color: black; }
+        .badge-medium { background: #17a2b8; color: white; }
+        .badge-low { background: #6c757d; color: white; }
+        
+        .badge-open { background: #6c757d; color: white; }
+        .badge-in_progress { background: #007bff; color: white; }
+        .badge-resolved { background: #28a745; color: white; }
+        .badge-closed { background: #343a40; color: white; }
+        
+        .footer { text-align: center; font-size: 11px; color: #6c757d; margin-top: 30px; padding-top: 15px; border-top: 2px solid #dee2e6; }
+        
+        .history-item { display: flex; gap: 15px; padding: 5px 0; font-size: 12px; border-bottom: 1px solid #f1f3f5; }
+        .history-item .date { color: #6c757d; min-width: 130px; }
+        
+        .print-btn { display: inline-block; padding: 10px 25px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px 0; }
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center;margin-bottom:15px;">
+        <button onclick="window.print()" class="print-btn">🖨️ Imprimer / Exporter en PDF</button>
+        <br><small>Cliquez sur "Enregistrer au format PDF" dans la fenêtre d'impression</small>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>🎫 Ticket {{ ticket.reference }}</h1>
+        <div class="reference">{{ ticket.title }}</div>
+    </div>
+
+    <!-- INFOS TICKET -->
+    <div class="ticket-info">
+        <div class="meta">
+            <div><strong>Référence :</strong> {{ ticket.reference }}</div>
+            <div><strong>Statut :</strong> <span class="badge badge-{{ ticket.status|lower }}">{{ ticket.get_status_display }}</span></div>
+            <div><strong>Priorité :</strong> <span class="badge badge-{{ ticket.priority|lower }}">{{ ticket.get_priority_display }}</span></div>
+            <div><strong>Catégorie :</strong> {{ ticket.get_category_display }}</div>
+            <div><strong>Créé par :</strong> {{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</div>
+            <div><strong>Assigné à :</strong> {% if ticket.assigned_to %}{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% else %}<span style="color:#6c757d;">Non assigné</span>{% endif %}</div>
+            <div><strong>Créé le :</strong> {{ ticket.created_at|date:"d/m/Y à H:i" }}</div>
+            <div><strong>Résolu le :</strong> {% if ticket.resolved_at %}{{ ticket.resolved_at|date:"d/m/Y à H:i" }}{% else %}<span style="color:#6c757d;">-</span>{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="description">
+        <h3 style="font-size:14px;color:#007bff;margin-bottom:8px;">📝 Description</h3>
+        <p>{{ ticket.description|linebreaks }}</p>
+    </div>
+
+    <!-- COMMENTAIRES -->
+    {% if comments %}
+    <div class="section-title">💬 Commentaires ({{ comments|length }})</div>
+    {% for comment in comments %}
+    <div class="comment {% if comment.is_internal %}internal{% endif %}">
+        <div class="author">{{ comment.user.get_full_name|default:comment.user.username }}</div>
+        <div class="date">{{ comment.created_at|date:"d/m/Y à H:i" }}{% if comment.is_internal %} 🔒 Interne{% endif %}</div>
+        <div class="content">{{ comment.content|linebreaks }}</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- HISTORIQUE -->
+    {% if audit_logs %}
+    <div class="section-title">📜 Historique des actions</div>
+    {% for log in audit_logs %}
+    <div class="history-item">
+        <span class="date">{{ log.created_at|date:"d/m/Y H:i" }}</span>
+        <span><strong>{{ log.user.get_full_name|default:log.user.username }}</strong></span>
+        <span>{{ log.get_action_display }}</span>
+        {% if log.old_value and log.new_value %}
+        <span style="color:#6c757d;">{{ log.old_value }} → {{ log.new_value }}</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- FOOTER -->
+    <div class="footer">
+        Généré le {{ date|date:"d/m/Y à H:i" }} | Helpdesk v1.0
+    </div>
+</body>
+</html>

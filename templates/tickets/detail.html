@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ticket {{ ticket.reference }} - {{ ticket.title }} - Helpdesk{% endblock %}
+
+{% block content %}
+<div x-data="ticketDetail()" x-init="init()">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1>
+                <span class="text-muted">{{ ticket.reference }}</span>
+                {{ ticket.title }}
+            </h1>
+            <div class="mt-2">
+                <span class="badge bg-{% if ticket.priority == 'CRITICAL' %}danger{% elif ticket.priority == 'HIGH' %}warning{% elif ticket.priority == 'MEDIUM' %}info{% else %}secondary{% endif %} me-2">
+                    <i class="fas fa-flag"></i> {{ ticket.get_priority_display }}
+                </span>
+                <span class="badge bg-{% if ticket.status == 'OPEN' %}secondary{% elif ticket.status == 'IN_PROGRESS' %}primary{% elif ticket.status == 'RESOLVED' %}success{% else %}dark{% endif %}">
+                    <i class="fas fa-circle"></i> {{ ticket.get_status_display }}
+                </span>
+                <span class="badge bg-info">
+                    <i class="fas fa-tag"></i> {{ ticket.get_category_display }}
+                </span>
+                {% if ticket.is_overdue %}
+                <span class="badge bg-danger">
+                    <i class="fas fa-exclamation-triangle"></i> En retard
+                </span>
+                {% endif %}
+            </div>
+        </div>
+       
+        <div class="btn-group">
+            <!-- ✅ BOUTON EXPORT PDF (Manager/Admin/Propriétaire) -->
+           {% if user.is_admin or user.is_manager or user.is_technician %}
+            <a href="{% url 'tickets:export_single_pdf' ticket.id %}" 
+               target="_blank" 
+               class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exporter
+            </a>
+            {% endif %}
+
+            <!-- BOUTON "M'ASSIGNER CE TICKET" - Technicien -->
+            {% if is_technician and not ticket.assigned_to %}
+            <form method="POST" action="{% url 'tickets:take' ticket.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-hand-paper"></i> Prendre
+                </button>
+            </form>
+            {% endif %}
+
+            <!-- BOUTON "ASSIGNER À UN TECHNICIEN" - Manager/Admin -->
+            {% if can_assign and not ticket.assigned_to %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignModal">
+                <i class="fas fa-user-plus"></i> Assigner
+            </button>
+            {% endif %}
+
+            <!-- BOUTON "DÉSASSIGNER" - Si assigné à l'utilisateur ou Manager/Admin -->
+            {% if ticket.assigned_to == request.user or is_admin or is_manager %}
+            <form method="POST" action="{% url 'tickets:unassign' ticket.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Désassigner ce ticket ?')">
+                    <i class="fas fa-user-slash"></i> Désassigner
+                </button>
+            </form>
+            {% endif %}
+
+            <!-- BOUTON MODIFIER -->
+            {% if is_admin or is_technician or ticket.created_by == user %}
+            <a href="{% url 'tickets:edit' ticket.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+            {% endif %}
+
+            <!-- BOUTON SUPPRIMER - Admin uniquement -->
+            {% if is_admin %}
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fas fa-trash"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Informations du ticket -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Description</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ ticket.description|linebreaks }}</p>
+                    
+                    {% if attachments %}
+                    <hr>
+                    <h6><i class="fas fa-paperclip"></i> Pièces jointes</h6>
+                    <div class="list-group">
+                        {% for attachment in attachments %}
+                        <a href="{{ attachment.file.url }}" target="_blank" class="list-group-item list-group-item-action">
+                            <i class="fas fa-file" :class="getFileIcon('{{ attachment.mime_type }}')"></i>
+                            {{ attachment.filename }}
+                            <small class="text-muted">({{ attachment.size|filesizeformat }})</small>
+                            <span class="badge bg-secondary float-end">
+                                {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
+                            </span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info"></i> Détails</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Créé par</dt>
+                        <dd class="col-sm-7">{% if ticket.created_by %}{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}{% else %}Inconnu{% endif %}</dd>
+                        
+                        <dt class="col-sm-5">Créé le</dt>
+                        <dd class="col-sm-7">{{ ticket.created_at|date:"d/m/Y H:i" }}</dd>
+                        
+                        <dt class="col-sm-5">Assigné à</dt>
+                        <dd class="col-sm-7">
+                            {% if ticket.assigned_to %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-user-check"></i> 
+                                    {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-hourglass"></i> Non assigné
+                                </span>
+                            {% endif %}
+                        </dd>
+                        
+                        {% if ticket.resolved_at %}
+                        <dt class="col-sm-5">Résolu le</dt>
+                        <dd class="col-sm-7">{{ ticket.resolved_at|date:"d/m/Y H:i" }}</dd>
+                        {% endif %}
+                        
+                        {% if ticket.closed_at %}
+                        <dt class="col-sm-5">Fermé le</dt>
+                        <dd class="col-sm-7">{{ ticket.closed_at|date:"d/m/Y H:i" }}</dd>
+                        {% endif %}
+                        
+                        {% if ticket.response_time %}
+                        <dt class="col-sm-5">Temps de réponse</dt>
+                        <dd class="col-sm-7">{{ ticket.response_time }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Changement de statut -->
+    {% if can_change_status %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Changer le statut</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{% url 'tickets:change_status' ticket.id %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <select name="status" class="form-select">
+                            <option value="OPEN" {% if ticket.status == 'OPEN' %}selected{% endif %}>Ouvert</option>
+                            <option value="IN_PROGRESS" {% if ticket.status == 'IN_PROGRESS' %}selected{% endif %}>En cours</option>
+                            <option value="RESOLVED" {% if ticket.status == 'RESOLVED' %}selected{% endif %}>Résolu</option>
+                            <option value="CLOSED" {% if ticket.status == 'CLOSED' %}selected{% endif %}>Fermé</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <input type="text" name="comment" class="form-control" placeholder="Commentaire (optionnel)">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> Mettre à jour
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Commentaires -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-comments"></i> Commentaires
+                <span class="badge bg-secondary ms-2">{{ comments|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Formulaire de commentaire -->
+            <form method="POST" class="mb-4">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <textarea name="content" class="form-control" rows="3" placeholder="Ajouter un commentaire..."></textarea>
+                </div>
+                <div class="mt-2 d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_internal" id="is_internal" class="form-check-input">
+                        <label class="form-check-label" for="is_internal">
+                            <i class="fas fa-lock text-warning"></i> Commentaire interne
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Envoyer
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Liste des commentaires -->
+            <div class="comments-list" x-data="{ showInternal: false }">
+                {% if comments %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">{{ comments|length }} commentaire(s)</h6>
+                    {% if is_admin or is_manager or is_technician %}
+                    <button class="btn btn-sm btn-outline-secondary" @click="showInternal = !showInternal">
+                        <i class="fas fa-eye"></i>
+                        <span x-text="showInternal ? 'Cacher internes' : 'Afficher internes'"></span>
+                    </button>
+                    {% endif %}
+                </div>
+                
+                {% for comment in comments %}
+                <div class="comment mb-3 {% if comment.is_internal %}border-start border-warning ps-3{% endif %}"
+                     x-show="{% if comment.is_internal %}showInternal{% else %}true{% endif %}">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 40px; height: 40px;">
+                                {% if comment.user %}{{ comment.user.username|first|upper }}{% else %}?{% endif %}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{% if comment.user %}{{ comment.user.get_full_name|default:comment.user.username }}{% else %}Utilisateur supprimé{% endif %}</strong>
+                                    {% if comment.is_internal %}
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        <i class="fas fa-lock"></i> Interne
+                                    </span>
+                                    {% endif %}
+                                    <small class="text-muted ms-2">
+                                        {{ comment.created_at|date:"d/m/Y H:i" }}
+                                    </small>
+                                </div>
+                                {% if comment.user == request.user or is_admin %}
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="if(confirm('Supprimer ce commentaire ?')){document.getElementById('deleteComment{{ comment.id }}').submit();}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <form id="deleteComment{{ comment.id }}" method="POST" 
+                                          action="{% url 'tickets:comment_delete' comment.id %}">
+                                        {% csrf_token %}
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <p class="mb-0">{{ comment.content|linebreaks }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-comment-slash fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">Aucun commentaire pour le moment</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historique -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history"></i> Historique des actions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Utilisateur</th>
+                            <th>Action</th>
+                            <th>Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                        <tr>
+                            <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}Système{% endif %}</td>
+                            <td>
+                                <span class="badge bg-{% if log.action == 'CREATE' %}success{% elif log.action == 'UPDATE' %}primary{% elif log.action == 'DELETE' %}danger{% elif log.action == 'STATUS_CHANGE' %}warning{% elif log.action == 'ASSIGN' %}info{% else %}secondary{% endif %}">
+                                    {{ log.get_action_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if log.old_value and log.new_value %}
+                                    {{ log.field_name }}: {{ log.old_value }} → {{ log.new_value }}
+                                {% else %}
+                                    {{ log.new_value }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                Aucun historique disponible
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Boutons retour -->
+    <div class="mt-4">
+        <a href="{% url 'tickets:list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+        <a href="{% url 'tickets:create' %}" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Nouveau ticket
+        </a>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL ASSIGNATION (Manager/Admin) -->
+<!-- ========================================== -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'tickets:assign_by_manager' ticket.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus"></i> Assigner le ticket {{ ticket.reference }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Choisir un technicien</label>
+                        <select name="technician_id" class="form-select" required>
+                            <option value="">Sélectionner...</option>
+                            {% for tech in technicians %}
+                            <option value="{{ tech.id }}">
+                                {{ tech.get_full_name|default:tech.username }}
+                                ({{ tech.assigned_tickets.count }} tickets actifs)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Le ticket sera automatiquement passé en "En cours".
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Assigner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL SUPPRESSION -->
+<!-- ========================================== -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'tickets:delete' ticket.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer le ticket <strong>{{ ticket.reference }}</strong> ?</p>
+                    <p class="text-danger"><small>Cette action est irréversible !</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function ticketDetail() {
+    return {
+        init() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        },
+        
+        getFileIcon(mimeType) {
+            if (mimeType && mimeType.startsWith('image/')) return 'fa-file-image text-primary';
+            if (mimeType === 'application/pdf') return 'fa-file-pdf text-danger';
+            if (mimeType && (mimeType.includes('word') || mimeType.includes('doc'))) return 'fa-file-word text-primary';
+            if (mimeType && (mimeType.includes('excel') || mimeType.includes('sheet'))) return 'fa-file-excel text-success';
+            if (mimeType && (mimeType.includes('zip') || mimeType.includes('rar'))) return 'fa-file-archive text-warning';
+            return 'fa-file text-secondary';
+        }
+    }
+}
+</script>
+
+<style>
+.comment {
+    transition: all 0.2s;
+}
+.comment:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+.avatar {
+    font-weight: bold;
+    font-size: 16px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+}
+</style>
+{% endblock %}

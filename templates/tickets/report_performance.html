@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport de performance - Helpdesk</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; background: white; color: #1a1a2e; }
+        
+        .header { text-align: center; padding: 20px 0; border-bottom: 3px solid #007bff; margin-bottom: 25px; }
+        .header h1 { color: #007bff; font-size: 24px; }
+        .header .subtitle { color: #6c757d; font-size: 13px; margin-top: 5px; }
+        
+        .section { margin-bottom: 25px; }
+        .section-title { font-size: 16px; font-weight: 600; color: #007bff; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 2px solid #e9ecef; }
+        
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #007bff; }
+        .summary-card .value { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+        .summary-card .label { font-size: 12px; color: #6c757d; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #007bff; color: white; padding: 8px 10px; text-align: left; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e9ecef; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        tr:hover { background: #e9f0ff; }
+        
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: #28a745; color: white; }
+        .badge-warning { background: #ffc107; color: black; }
+        .badge-danger { background: #dc3545; color: white; }
+        .badge-info { background: #17a2b8; color: white; }
+        
+        .progress-bar { height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin-top: 3px; }
+        .progress-bar .fill { height: 100%; border-radius: 4px; }
+        .fill-success { background: #28a745; }
+        .fill-warning { background: #ffc107; }
+        .fill-danger { background: #dc3545; }
+        .fill-primary { background: #007bff; }
+        
+        .footer { text-align: center; font-size: 11px; color: #6c757d; margin-top: 30px; padding-top: 15px; border-top: 2px solid #dee2e6; }
+        .no-print { text-align: center; margin-bottom: 15px; }
+        .print-btn { padding: 10px 25px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()" class="print-btn">🖨️ Imprimer / Exporter en PDF</button>
+        <br><small style="color:#6c757d;">Cliquez sur "Enregistrer au format PDF" dans la fenêtre d'impression</small>
+        <hr>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>📊 RAPPORT DE PERFORMANCE</h1>
+        <div class="subtitle">
+            Période : {{ data.period.start }} → {{ data.period.end }}
+            {% if data.technician_name != 'Tous les techniciens' %}
+            | Technicien : {{ data.technician_name }}
+            {% endif %}
+        </div>
+        <div class="subtitle">Généré le {{ data.generated_at|date:"d/m/Y à H:i" }}</div>
+    </div>
+
+    <!-- RÉSUMÉ GLOBAL -->
+    <div class="section">
+        <div class="section-title">📈 Résumé global</div>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="value">{{ data.summary.total }}</div>
+                <div class="label">Total tickets</div>
+            </div>
+            <div class="summary-card" style="border-color:#28a745;">
+                <div class="value">{{ data.summary.resolved }}</div>
+                <div class="label">Résolus</div>
+            </div>
+            <div class="summary-card" style="border-color:#ffc107;">
+                <div class="value">{{ data.summary.in_progress }}</div>
+                <div class="label">En cours</div>
+            </div>
+            <div class="summary-card" style="border-color:#dc3545;">
+                <div class="value">{{ data.summary.open }}</div>
+                <div class="label">Ouverts</div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 10px;">
+            <div class="summary-card" style="border-color:#007bff;">
+                <div class="value">{{ data.summary.resolution_rate }}%</div>
+                <div class="label">Taux de résolution</div>
+                <div class="progress-bar">
+                    <div class="fill fill-primary" style="width: {{ data.summary.resolution_rate }}%;"></div>
+                </div>
+            </div>
+            <div class="summary-card" style="border-color:#17a2b8;">
+                <div class="value">{{ data.summary.avg_resolution_hours }}h</div>
+                <div class="label">Temps moyen de résolution</div>
+            </div>
+            <div class="summary-card" style="border-color:#28a745;">
+                <div class="value">{{ data.summary.sla_rate }}%</div>
+                <div class="label">Conformité SLA</div>
+                <div class="progress-bar">
+                    <div class="fill fill-success" style="width: {{ data.summary.sla_rate }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERFORMANCE DES TECHNICIENS -->
+    <div class="section">
+        <div class="section-title">👨‍🔧 Performance des techniciens</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Technicien</th>
+                    <th>Assignés</th>
+                    <th>Résolus</th>
+                    <th>Taux</th>
+                    <th>Temps moyen</th>
+                    <th>Satisfaction</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tech in data.technician_performance %}
+                <tr>
+                    <td><strong>{{ tech.name }}</strong></td>
+                    <td>{{ tech.total_assigned }}</td>
+                    <td>{{ tech.total_resolved }}</td>
+                    <td>
+                        {{ tech.resolution_rate }}%
+                        <div class="progress-bar" style="width:60px;">
+                            <div class="fill fill-{% if tech.resolution_rate >= 80 %}success{% elif tech.resolution_rate >= 60 %}warning{% else %}danger{% endif %}" 
+                                 style="width: {{ tech.resolution_rate }}%;"></div>
+                        </div>
+                    </td>
+                    <td>{{ tech.avg_resolution_hours|default:"-" }}h</td>
+                    <td>{{ tech.satisfaction_rate }}%</td>
+                    <td>
+                        <span class="badge badge-{% if tech.performance_score >= 80 %}success{% elif tech.performance_score >= 60 %}warning{% else %}danger{% endif %}">
+                            {{ tech.performance_score }}%
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align:center;padding:20px;color:#6c757d;">Aucun technicien actif</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- STATISTIQUES PAR CATÉGORIE -->
+    <div class="section">
+        <div class="section-title">📊 Statistiques des tickets</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div>
+                <h4 style="font-size:14px;color:#495057;margin-bottom:10px;">Par catégorie</h4>
+                <table>
+                    <tr><th>Catégorie</th><th>Nombre</th></tr>
+                    {% for cat, count in data.category_stats.items %}
+                    <tr>
+                        <td>{{ cat }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div>
+                <h4 style="font-size:14px;color:#495057;margin-bottom:10px;">Par priorité</h4>
+                <table>
+                    <tr><th>Priorité</th><th>Nombre</th></tr>
+                    {% for prio, count in data.priority_stats.items %}
+                    <tr>
+                        <td>{{ prio }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TICKETS EN RETARD SLA -->
+    {% if data.overdue_tickets %}
+    <div class="section">
+        <div class="section-title">⚠️ Tickets en retard SLA</div>
+        <table>
+            <thead>
+                <tr><th>Référence</th><th>Titre</th><th>Technicien</th><th>Retard</th></tr>
+            </thead>
+            <tbody>
+                {% for ticket in data.overdue_tickets %}
+                <tr>
+                    <td><strong>{{ ticket.reference }}</strong></td>
+                    <td>{{ ticket.title|truncatechars:30 }}</td>
+                    <td>{{ ticket.assigned_to.get_full_name|default:"-" }}</td>
+                    <td><span class="badge badge-danger">En retard</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- ÉVOLUTION QUOTIDIENNE -->
+    <div class="section">
+        <div class="section-title">📅 Évolution quotidienne (30 jours)</div>
+        <div style="overflow-x:auto;">
+            <table style="min-width:600px;">
+                <thead>
+                    <tr><th>Date</th><th>Créés</th><th>Résolus</th></tr>
+                </thead>
+                <tbody>
+                    {% for day in data.daily_evolution %}
+                    <tr>
+                        <td>{{ day.date }}</td>
+                        <td><span class="badge badge-primary">{{ day.created }}</span></td>
+                        <td><span class="badge badge-success">{{ day.resolved }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        Généré le {{ data.generated_at|date:"d/m/Y à H:i" }} | Helpdesk v1.0
+    </div>
+</body>
+</html>

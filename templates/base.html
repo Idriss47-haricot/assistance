@@ -1,0 +1,385 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Helpdesk - Gestion des incidents{% endblock %}</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <!-- Sons de notification -->
+    <audio id="sound-ticket" src="{% static 'sounds/1.wav' %}" preload="auto"></audio>
+    <audio id="sound-status" src="{% static 'sounds/2.wav' %}" preload="auto"></audio>
+    <audio id="sound-assign" src="{% static 'sounds/3.wav' %}" preload="auto"></audio>
+    <audio id="sound-comment" src="{% static 'sounds/3.wav' %}" preload="auto"></audio>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body x-data="app()" x-init="init()">
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{% url 'home' %}">
+                    <i class="fas fa-ticket-alt"></i> Helpdesk
+                </a>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                        data-bs-target="#navbarMain" aria-controls="navbarMain" 
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <!-- Navigation Links -->
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'home' %}">
+                                <i class="fas fa-home"></i> Accueil
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:dashboard' %}">
+                                <i class="fas fa-chart-line"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:list' %}">
+                                <i class="fas fa-list"></i> Tickets
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:create' %}">
+                                <i class="fas fa-plus-circle"></i> Nouveau
+                            </a>
+                        </li>
+                        
+                        <!-- Menu Manager/Admin -->
+                        {% if user.is_admin or user.is_manager %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:report' %}">
+                                <i class="fas fa-chart-bar"></i> Rapports
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:stats_advanced' %}">
+                                <i class="fas fa-chart-pie"></i> Statistiques
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'tickets:assign_mass' %}">
+                                <i class="fas fa-users-cog"></i> Assignation en masse
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        <!-- Administration -->
+                        {% if user.is_staff %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/">
+                                <i class="fas fa-cog"></i> Administration
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <!-- User Menu -->
+                    <ul class="navbar-nav">
+                        <!-- Notifications -->
+                        <li class="nav-item dropdown" x-data="notifications()">
+                            <a class="nav-link" href="#" @click.prevent="toggleDropdown">
+                                <i class="fas fa-bell"></i>
+                                <span class="badge bg-danger rounded-pill" 
+                                      x-show="unreadCount > 0" 
+                                      x-text="unreadCount" 
+                                      x-cloak></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end" 
+                                 x-show="isOpen" 
+                                 @click.away="isOpen = false"
+                                 style="width: 350px;">
+                                <h6 class="dropdown-header">Notifications</h6>
+                                <div x-html="notificationsHtml"></div>
+                            </div>
+                        </li>
+                        
+                        <!-- User Profile / Connexion -->
+                        {% if user.is_authenticated %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" 
+                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-circle"></i>
+                                    <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'users:profile' %}">
+                                            <i class="fas fa-id-card"></i> Mon profil
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'tickets:create' %}">
+                                            <i class="fas fa-plus-circle"></i> Nouveau ticket
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'tickets:list' %}">
+                                            <i class="fas fa-list"></i> Mes tickets
+                                        </a>
+                                    </li>
+                                    {% if user.is_staff %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="/admin/">
+                                            <i class="fas fa-cog"></i> Administration
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="post" action="{% url 'users:logout' %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="fas fa-sign-out-alt"></i> Déconnexion
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link btn btn-outline-light btn-sm px-3" href="{% url 'login' %}">
+                                    <i class="fas fa-sign-in-alt"></i> Connexion
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Messages -->
+        <div class="container-fluid mt-3">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <!-- Main Content -->
+        <main class="container-fluid">
+            {% block content %}
+            {% endblock %}
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer mt-auto py-3 bg-light border-top">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6">
+                        <span class="text-muted">
+                            &copy; {% now "Y" %} Helpdesk - Version 1.0.0
+                        </span>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="text-muted">
+                            <i class="fas fa-clock"></i> 
+                            <span x-data="{ time: new Date().toLocaleString() }" 
+                                  x-init="setInterval(() => time = new Date().toLocaleString(), 1000)" 
+                                  x-text="time">
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+    
+    <!-- Alpine.js App -->
+    <script>
+        function app() {
+            return {
+                init() {
+                    this.initTooltips();
+                },
+                initTooltips() {
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+            }
+        }
+        
+        function notifications() {
+            return {
+                isOpen: false,
+                unreadCount: 0,
+                notificationsHtml: '<div class="text-center p-3">Aucune notification</div>',
+                
+                toggleDropdown() {
+                    this.isOpen = !this.isOpen;
+                    if (this.isOpen) {
+                        this.loadNotifications();
+                    }
+                },
+                
+                loadNotifications() {
+                    fetch('/tickets/notifications/')
+                        .then(response => response.json())
+                        .then(data => {
+                            this.unreadCount = data.unread_count;
+                            this.notificationsHtml = this.renderNotifications(data.notifications);
+                            // Jouer le son pour les nouvelles notifications
+                            if (data.notifications && data.notifications.length > 0) {
+                                data.notifications.forEach(n => {
+                                    if (!n.is_read) {
+                                        this.playSound(n.type);
+                                    }
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erreur chargement notifications:', error);
+                            this.notificationsHtml = '<div class="text-center p-3 text-danger">Erreur de chargement</div>';
+                        });
+                },
+                
+                renderNotifications(notifications) {
+                    if (!notifications || notifications.length === 0) {
+                        return '<div class="text-center p-3 text-muted">Aucune notification</div>';
+                    }
+                    
+                    let html = '';
+                    notifications.forEach(n => {
+                        html += `
+                            <div class="dropdown-item notification-item ${n.is_read ? '' : 'unread'}">
+                                <div class="d-flex align-items-start">
+                                    <div class="notification-icon me-2">
+                                        <span class="badge bg-primary">${n.type}</span>
+                                    </div>
+                                    <div>
+                                        <p class="mb-0 small">${n.message}</p>
+                                        <small class="text-muted">${n.created_at}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    return html;
+                },
+                
+                playSound(type) {
+                    const soundMap = {
+                        'TICKET_CREATED': 'sound-ticket',
+                        'STATUS_CHANGED': 'sound-status',
+                        'ASSIGNED': 'sound-assign',
+                        'COMMENT_ADDED': 'sound-comment',
+                    };
+                    const soundId = soundMap[type];
+                    if (soundId) {
+                        const audio = document.getElementById(soundId);
+                        if (audio) {
+                            audio.currentTime = 0;
+                            audio.play().catch(e => {
+                                console.log('Son bloqué par le navigateur:', e);
+                                // Fallback: API Web Audio
+                                try {
+                                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                    const osc = ctx.createOscillator();
+                                    osc.frequency.value = 880;
+                                    osc.connect(ctx.destination);
+                                    osc.start();
+                                    setTimeout(() => osc.stop(), 300);
+                                } catch(err) {
+                                    console.log('Fallback échoué');
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Système de sons - UNE SEULE FOIS -->
+    <script>
+        // ✅ UNE SEULE DÉCLARATION
+        const SOUNDS = {
+            'ticket': new Audio("{% static 'sounds/1.wav' %}"),
+            'status': new Audio("{% static 'sounds/2.wav' %}"),
+            'assign': new Audio("{% static 'sounds/3.wav' %}"),
+            'comment': new Audio("{% static 'sounds/3.wav' %}"),
+        };
+
+        function playNotificationSound(soundType) {
+            const sound = SOUNDS[soundType];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => {
+                    console.log('Son bloqué par le navigateur:', e);
+                    // Fallback: utiliser les balises audio
+                    const soundMap = {
+                        'ticket': 'sound-ticket',
+                        'status': 'sound-status',
+                        'assign': 'sound-assign',
+                        'comment': 'sound-comment',
+                    };
+                    const audioId = soundMap[soundType];
+                    if (audioId) {
+                        const audio = document.getElementById(audioId);
+                        if (audio) {
+                            audio.currentTime = 0;
+                            audio.play().catch(err => console.log('Fallback échoué:', err));
+                        }
+                    }
+                });
+            }
+        }
+
+        function testAllSounds() {
+            console.log('🔊 Test des sons...');
+            const types = ['ticket', 'status', 'assign', 'comment'];
+            types.forEach((type, index) => {
+                setTimeout(() => {
+                    console.log(`🔊 Jouer: ${type}`);
+                    playNotificationSound(type);
+                }, index * 1000 + 500);
+            });
+        }
+
+        // Exposer les fonctions globalement
+        window.playNotificationSound = playNotificationSound;
+        window.testAllSounds = testAllSounds;
+
+        console.log('🔊 Système de sons chargé !');
+        console.log('💡 Tapez testAllSounds() pour tester');
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

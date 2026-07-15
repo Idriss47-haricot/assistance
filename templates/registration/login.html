@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Connexion - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-ticket-alt"></i> Helpdesk
+                </h4>
+                <small>Connexion à votre compte</small>
+            </div>
+            <div class="card-body">
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Nom d'utilisateur ou mot de passe incorrect.
+                </div>
+                {% endif %}
+
+                {% if next %}
+                    {% if user.is_authenticated %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Vous n'avez pas accès à cette page.
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Veuillez vous connecter pour accéder à cette page.
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user"></i> Nom d'utilisateur
+                        </label>
+                        <input type="text" name="username" id="username" 
+                               class="form-control" placeholder="Entrez votre nom d'utilisateur" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock"></i> Mot de passe
+                        </label>
+                        <input type="password" name="password" id="password" 
+                               class="form-control" placeholder="Entrez votre mot de passe" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="remember_me" id="remember_me" class="form-check-input">
+                        <label for="remember_me" class="form-check-label">
+                            Se souvenir de moi
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt"></i> Se connecter
+                    </button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted">
+                <small>Contactez votre administrateur si vous n'avez pas de compte</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

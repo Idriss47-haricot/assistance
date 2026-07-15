@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Modifier{% else %}Créer{% endif %} un ticket - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: 0.5rem;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .drop-zone:hover {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    .drop-zone.dragover {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+    }
+    .card {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas {% if is_edit %}fa-edit{% else %}fa-plus-circle{% endif %}"></i>
+                    {% if is_edit %}
+                        Modifier le ticket #{{ ticket.reference }}
+                    {% else %}
+                        Nouveau ticket
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Affichage des erreurs -->
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Veuillez corriger les erreurs ci-dessous :
+                    <ul class="mb-0 mt-2">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- ✅ FORMULAIRE AVEC CSRF TOKEN -->
+                <form method="POST" enctype="multipart/form-data" x-data="ticketForm()">
+                    {% csrf_token %}
+                    
+                    <!-- Titre -->
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Titre <span class="text-danger">*</span></label>
+                        <input type="text" name="title" id="id_title" 
+                               class="form-control {% if form.title.errors %}is-invalid{% endif %}"
+                               placeholder="Ex: Problème d'impression, accès réseau..."
+                               value="{{ form.title.value|default:'' }}" required>
+                        {% if form.title.errors %}
+                        <div class="invalid-feedback">{{ form.title.errors|first }}</div>
+                        {% endif %}
+                        <div class="form-text">Titre court décrivant votre problème</div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea name="description" id="id_description" 
+                                  class="form-control {% if form.description.errors %}is-invalid{% endif %}"
+                                  rows="5" placeholder="Décrivez votre problème en détail..." required>{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                        <div class="invalid-feedback">{{ form.description.errors|first }}</div>
+                        {% endif %}
+                        <div class="form-text">Expliquez clairement le problème</div>
+                    </div>
+
+                    <!-- Catégorie -->
+                    <div class="mb-3">
+                        <label for="id_category" class="form-label">Catégorie</label>
+                        <select name="category" id="id_category" class="form-select {% if form.category.errors %}is-invalid{% endif %}">
+                            <option value="HARDWARE" {% if form.category.value == 'HARDWARE' %}selected{% endif %}>Matériel</option>
+                            <option value="SOFTWARE" {% if form.category.value == 'SOFTWARE' %}selected{% endif %}>Logiciel</option>
+                            <option value="NETWORK" {% if form.category.value == 'NETWORK' %}selected{% endif %}>Réseau</option>
+                            <option value="ACCESS" {% if form.category.value == 'ACCESS' %}selected{% endif %}>Accès</option>
+                            <option value="OTHER" {% if form.category.value == 'OTHER' or not form.category.value %}selected{% endif %}>Autre</option>
+                        </select>
+                        {% if form.category.errors %}
+                        <div class="invalid-feedback">{{ form.category.errors|first }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Priorité -->
+                    <div class="mb-3">
+                        <label for="id_priority" class="form-label">Priorité <span class="text-danger">*</span></label>
+                        <select name="priority" id="id_priority" class="form-select {% if form.priority.errors %}is-invalid{% endif %}">
+                            <option value="LOW" {% if form.priority.value == 'LOW' %}selected{% endif %}>🟢 Basse</option>
+                            <option value="MEDIUM" {% if form.priority.value == 'MEDIUM' or not form.priority.value %}selected{% endif %}>🟡 Moyenne</option>
+                            <option value="HIGH" {% if form.priority.value == 'HIGH' %}selected{% endif %}>🟠 Haute</option>
+                            <option value="CRITICAL" {% if form.priority.value == 'CRITICAL' %}selected{% endif %}>🔴 Critique</option>
+                        </select>
+                        {% if form.priority.errors %}
+                        <div class="invalid-feedback">{{ form.priority.errors|first }}</div>
+                        {% endif %}
+                        <div class="form-text">Niveau d'urgence de votre problème</div>
+                    </div>
+
+                    <!-- Pièces jointes -->
+                    <div class="mb-3" x-data="fileUpload()">
+                        <label class="form-label">
+                            <i class="fas fa-paperclip"></i> Pièces jointes
+                        </label>
+                        <div class="drop-zone" 
+                             @dragover.prevent="dragging = true"
+                             @dragleave.prevent="dragging = false"
+                             @drop.prevent="handleDrop($event)"
+                             :class="{ 'dragover': dragging }">
+                            <div class="text-center py-4">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">
+                                    Glissez-déposez vos fichiers ici ou
+                                    <label for="id_attachments" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-folder-open"></i> Parcourir
+                                    </label>
+                                </p>
+                                <small class="text-muted">
+                                    Formats acceptés : images, PDF, DOC, TXT, ZIP (max 5Mo)
+                                </small>
+                            </div>
+                        </div>
+                        <input type="file" name="attachments" id="id_attachments" 
+                               class="form-control" multiple style="display:none;">
+                        
+                        <!-- Liste des fichiers -->
+                        <div x-show="files.length > 0" class="mt-2">
+                            <h6>Fichiers sélectionnés :</h6>
+                            <div class="list-group">
+                                <template x-for="(file, index) in files" :key="index">
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-file" :class="getFileIcon(file.type)"></i>
+                                            <span x-text="file.name"></span>
+                                            <small class="text-muted" x-text="formatSize(file.size)"></small>
+                                        </span>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                @click="removeFile(index)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'tickets:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            {% if is_edit %}Enregistrer{% else %}Créer le ticket{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function ticketForm() {
+    return {
+        // Validation ou autres fonctionnalités
+    }
+}
+
+function fileUpload() {
+    return {
+        files: [],
+        
+        handleDrop(event) {
+            const droppedFiles = event.dataTransfer.files;
+            this.addFiles(droppedFiles);
+        },
+        
+        addFiles(fileList) {
+            const maxSize = 5 * 1024 * 1024; // 5 Mo
+            
+            for (let file of fileList) {
+                if (file.size > maxSize) {
+                    alert(`Le fichier "${file.name}" dépasse la taille maximale de 5 Mo.`);
+                    continue;
+                }
+                this.files.push(file);
+            }
+            
+            this.updateFileInput();
+        },
+        
+        removeFile(index) {
+            this.files.splice(index, 1);
+            this.updateFileInput();
+        },
+        
+        updateFileInput() {
+            const input = document.getElementById('id_attachments');
+            const dataTransfer = new DataTransfer();
+            
+            for (let file of this.files) {
+                dataTransfer.items.add(file);
+            }
+            
+            input.files = dataTransfer.files;
+        },
+        
+        getFileIcon(mimeType) {
+            if (!mimeType) return 'fa-file text-secondary';
+            if (mimeType.startsWith('image/')) return 'fa-file-image text-primary';
+            if (mimeType === 'application/pdf') return 'fa-file-pdf text-danger';
+            if (mimeType.includes('word') || mimeType.includes('doc')) return 'fa-file-word text-primary';
+            if (mimeType.includes('excel') || mimeType.includes('sheet')) return 'fa-file-excel text-success';
+            if (mimeType.includes('zip') || mimeType.includes('rar')) return 'fa-file-archive text-warning';
+            return 'fa-file text-secondary';
+        },
+        
+        formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    }
+}
+</script>
+{% endblock %}

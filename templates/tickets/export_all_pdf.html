@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Liste des tickets - Helpdesk</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background: white; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 3px solid #007bff; margin-bottom: 20px; }
+        .header h1 { color: #007bff; font-size: 22px; }
+        .header p { color: #6c757d; font-size: 13px; }
+        .filter-info { text-align: center; font-size: 12px; color: #6c757d; margin-bottom: 15px; padding: 8px; background: #f8f9fa; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #007bff; color: white; padding: 8px 6px; text-align: center; border: 1px solid #0062cc; }
+        td { padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: bold; }
+        .badge-critical { background: #dc3545; color: white; }
+        .badge-high { background: #ffc107; color: black; }
+        .badge-medium { background: #17a2b8; color: white; }
+        .badge-low { background: #6c757d; color: white; }
+        .badge-open { background: #6c757d; color: white; }
+        .badge-in_progress { background: #007bff; color: white; }
+        .badge-resolved { background: #28a745; color: white; }
+        .badge-closed { background: #343a40; color: white; }
+        .footer { text-align: center; font-size: 10px; color: #6c757d; margin-top: 20px; padding-top: 15px; border-top: 2px solid #dee2e6; }
+        .print-btn { display: inline-block; padding: 10px 25px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px 0; }
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center;margin-bottom:15px;">
+        <button onclick="window.print()" class="print-btn">🖨️ Imprimer / Exporter en PDF</button>
+        <br><small>Cliquez sur "Enregistrer au format PDF" dans la fenêtre d'impression</small>
+    </div>
+
+    <div class="header">
+        <h1>📋 Liste des tickets</h1>
+        <p>Helpdesk - Gestion des incidents</p>
+    </div>
+
+    <div class="filter-info">
+        <strong>Total:</strong> {{ total }} tickets
+        {% if status_filter != 'Tous' %} | <strong>Statut:</strong> {{ status_filter }}{% endif %}
+        {% if priority_filter != 'Toutes' %} | <strong>Priorité:</strong> {{ priority_filter }}{% endif %}
+        | <strong>Généré le:</strong> {{ date|date:"d/m/Y à H:i" }}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:8%;">Réf.</th>
+                <th style="width:18%;">Titre</th>
+                <th style="width:10%;">Catégorie</th>
+                <th style="width:10%;">Priorité</th>
+                <th style="width:12%;">Statut</th>
+                <th style="width:12%;">Créé par</th>
+                <th style="width:12%;">Assigné à</th>
+                <th style="width:18%;">Créé le</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td><strong>{{ ticket.reference }}</strong></td>
+                <td style="text-align:left;">{{ ticket.title|truncatechars:40 }}</td>
+                <td>{{ ticket.get_category_display }}</td>
+                <td><span class="badge badge-{{ ticket.priority|lower }}">{{ ticket.get_priority_display }}</span></td>
+                <td><span class="badge badge-{{ ticket.status|lower }}">{{ ticket.get_status_display }}</span></td>
+                <td>{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</td>
+                <td>{% if ticket.assigned_to %}{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% else %}<span style="color:#6c757d;">-</span>{% endif %}</td>
+                <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;padding:30px;color:#6c757d;">Aucun ticket trouvé</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Généré le {{ date|date:"d/m/Y à H:i" }} | Helpdesk v1.0
+    </div>
+</body>
+</html>

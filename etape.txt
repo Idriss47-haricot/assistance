@@ -1,0 +1,71 @@
+# 📋 PLAN D'AMÉLIORATION COMPLET DU SYSTÈME HELPDESK
+
+## 🎯 OBJECTIFS GÉNÉRAUX
+
+1. **Page de connexion améliorée** avec sélection de rôle (Admin, Manager, Technicien, Employé)
+2. **Export PDF amélioré** : un seul ticket ou tous les tickets
+3. **Système de notifications sonores** en temps réel
+4. **Rapports avancés** (Manager et Admin uniquement)
+5. **Gestion des performances des techniciens**
+9️⃣ FICHIER DES SONS (à télécharger)
+
+Créez un dossier static/sounds/ et placez-y ces fichiers :
+
+    notification-ticket.mp3 - Son de ding pour nouveau ticket
+
+    notification-status.mp3 - Son de tic pour changement de statut
+
+    notification-assign.mp3 - Son de cloche pour assignation
+
+    notification-comment.mp3 - Son de pop pour commentaire
+
+Sons gratuits :
+
+    https://mixkit.co/free-sound-effects/notification/
+
+    https://www.zapsplat.com/sound-effect-category/notification/
+---
+
+
+
+## 📋 RÉCAPITULATIF DES PHASES
+
+| Phase | Fonctionnalité | Rôle |
+|-------|---------------|------|
+| **Phase 1** | Connexion avec sélection de rôle | Tous |
+| **Phase 2** | Export PDF (un ticket / tous les tickets) | Tous |
+| **Phase 3** | Notifications sonores en temps réel | Tous |
+| **Phase 4** | Génération de rapports | Manager + Admin |
+| **Phase 5** | Assignation avancée | Manager + Admin |
+| **Phase 6** | Statistiques complètes | Manager + Admin |
+
+---
+
+## 📋 TABLEAU DES PERMISSIONS
+
+| Fonctionnalité | Employé | Technicien | Manager | Admin |
+|----------------|---------|------------|---------|-------|
+| **Connexion avec rôle** | ✅ | ✅ | ✅ | ✅ |
+| **Exporter son ticket en PDF** | ✅ | ✅ | ✅ | ✅ |
+| **Exporter tous les tickets en PDF** | ❌ | ❌ | ✅ | ✅ |
+| **Notifications sonores** | ✅ | ✅ | ✅ | ✅ |
+| **Générer des rapports** | ❌ | ❌ | ✅ | ✅ |
+| **Assigner des tickets** | ❌ | ❌ | ✅ | ✅ |
+| **Statistiques complètes** | ❌ | ❌ | ✅ | ✅ |
+| **Assignation en masse** | ❌ | ❌ | ✅ | ✅ |
+
+---
+
+**Ce plan couvre toutes vos demandes ! Souhaitez-vous que je commence à vous donner le code pour chaque phase ?** 🚀
+
+
+
+
+
+
+
+
+
+
+
+venv\Scripts\activate.bat

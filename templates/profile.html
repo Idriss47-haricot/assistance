@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profil - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-id-card"></i> Mon profil</h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-circle bg-primary text-white mx-auto" 
+                         style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em;">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <h5 class="mt-2">{{ user.get_full_name|default:user.username }}</h5>
+                    <span class="badge bg-secondary">{{ user.get_role_display }}</span>
+                </div>
+                
+                <dl class="row">
+                    <dt class="col-sm-4">Nom d'utilisateur</dt>
+                    <dd class="col-sm-8">{{ user.username }}</dd>
+                    
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ user.email|default:"Non renseigné" }}</dd>
+                    
+                    <dt class="col-sm-4">Département</dt>
+                    <dd class="col-sm-8">{{ user.department|default:"Non renseigné" }}</dd>
+                    
+                    <dt class="col-sm-4">Téléphone</dt>
+                    <dd class="col-sm-8">{{ user.phone_number|default:"Non renseigné" }}</dd>
+                    
+                    <dt class="col-sm-4">Rôle</dt>
+                    <dd class="col-sm-8">{{ user.get_role_display }}</dd>
+                    
+                    <dt class="col-sm-4">Membre depuis</dt>
+                    <dd class="col-sm-8">{{ user.date_joined|date:"d/m/Y" }}</dd>
+                </dl>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'tickets:create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Créer un ticket
+                    </a>
+                    <a href="{% url 'tickets:list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list"></i> Voir mes tickets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

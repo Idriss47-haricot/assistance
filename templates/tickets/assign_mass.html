@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Assignation en masse - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-users-cog"></i> Assignation en masse
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-tasks"></i> Tickets à assigner
+                        </label>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+                                        <th>Réf.</th>
+                                        <th>Titre</th>
+                                        <th>Priorité</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ticket in unassigned_tickets %}
+                                    <tr>
+                                        <td><input type="checkbox" name="ticket_ids" value="{{ ticket.id }}" class="ticket-checkbox"></td>
+                                        <td>{{ ticket.reference }}</td>
+                                        <td>{{ ticket.title|truncatechars:30 }}</td>
+                                        <td>
+                                            <span class="badge {% if ticket.priority == 'CRITICAL' %}bg-danger{% elif ticket.priority == 'HIGH' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                {{ ticket.get_priority_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3 text-muted">
+                                            <i class="fas fa-check-circle text-success"></i> Tous les tickets sont assignés !
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2">
+                            <span id="selectedCount">0</span> ticket(s) sélectionné(s)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-user-cog"></i> Assigner à
+                        </label>
+                        <select name="technician_id" class="form-select" required>
+                            <option value="">Choisir un technicien...</option>
+                            {% for tech in technicians %}
+                            <option value="{{ tech.id }}">
+                                {{ tech.get_full_name|default:tech.username }}
+                                ({{ tech.assigned_tickets.count }} tickets actifs)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'tickets:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Assigner les tickets sélectionnés
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAll(source) {
+    document.querySelectorAll('.ticket-checkbox').forEach(cb => cb.checked = source.checked);
+    updateCount();
+}
+
+function updateCount() {
+    const count = document.querySelectorAll('.ticket-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = count;
+}
+
+document.querySelectorAll('.ticket-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateCount);
+});
+</script>
+{% endblock %}

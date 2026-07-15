@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kanban - Tickets - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kanban-column {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        min-height: 500px;
+        max-height: 800px;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+    .kanban-column::-webkit-scrollbar {
+        width: 6px;
+    }
+    .kanban-column::-webkit-scrollbar-thumb {
+        background: #ced4da;
+        border-radius: 3px;
+    }
+    .kanban-card {
+        cursor: grab;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+    .kanban-card.dragging {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+    .kanban-column.drag-over {
+        background: #e9ecef;
+        border: 2px dashed #0d6efd;
+    }
+    .kanban-header {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 10;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .kanban-column-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .ticket-count {
+        font-size: 0.8rem;
+        background: #dee2e6;
+        padding: 0.1rem 0.6rem;
+        border-radius: 20px;
+    }
+    .kanban-card .card {
+        transition: all 0.2s;
+    }
+    .kanban-card .card:hover {
+        border-color: #0d6efd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="kanban()" x-init="init()" class="kanban-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-columns text-primary"></i> 
+            Kanban
+        </h1>
+        <div>
+            <a href="{% url 'tickets:list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-list"></i> Vue liste
+            </a>
+            <a href="{% url 'tickets:create' %}" class="btn btn-primary ms-2">
+                <i class="fas fa-plus-circle"></i> Nouveau ticket
+            </a>
+        </div>
+    </div>
+
+    <!-- Colonnes Kanban -->
+    <div class="row g-3">
+        <!-- OPEN -->
+        <div class="col-md-3">
+            <div class="kanban-column" 
+                 x-data="column('OPEN')"
+                 @dragover.prevent="dragOver = true"
+                 @dragleave="dragOver = false"
+                 @drop="handleDrop($event, 'OPEN')"
+                 :class="{ 'drag-over': dragOver }">
+                <div class="kanban-header">
+                    <div class="kanban-column-title">
+                        <span class="badge bg-secondary">🟡</span>
+                        Ouverts
+                        <span class="ticket-count" x-text="tickets.length"></span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <template x-for="ticket in tickets" :key="ticket.id">
+                        <div class="kanban-card mb-2"
+                             draggable="true"
+                             @dragstart="handleDragStart($event, ticket)"
+                             @dragend="handleDragEnd">
+                            <div class="card card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold" x-text="ticket.reference"></span>
+                                        <span class="badge ms-1" :class="{
+                                            'bg-danger': ticket.priority === 'CRITICAL',
+                                            'bg-warning': ticket.priority === 'HIGH',
+                                            'bg-info': ticket.priority === 'MEDIUM',
+                                            'bg-secondary': ticket.priority === 'LOW'
+                                        }" x-text="ticket.priority_display"></span>
+                                    </div>
+                                    <small class="text-muted" x-text="formatDate(ticket.created_at)"></small>
+                                </div>
+                                <p class="mb-1 small text-truncate" x-text="ticket.title"></p>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted" x-text="ticket.created_by.username"></span>
+                                    <span x-show="ticket.assigned_to">
+                                        <i class="fas fa-user"></i> 
+                                        <span x-text="ticket.assigned_to.username"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tickets.length === 0" class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                        Aucun ticket
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IN_PROGRESS -->
+        <div class="col-md-3">
+            <div class="kanban-column"
+                 x-data="column('IN_PROGRESS')"
+                 @dragover.prevent="dragOver = true"
+                 @dragleave="dragOver = false"
+                 @drop="handleDrop($event, 'IN_PROGRESS')"
+                 :class="{ 'drag-over': dragOver }">
+                <div class="kanban-header">
+                    <div class="kanban-column-title">
+                        <span class="badge bg-primary">🔵</span>
+                        En cours
+                        <span class="ticket-count" x-text="tickets.length"></span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <template x-for="ticket in tickets" :key="ticket.id">
+                        <div class="kanban-card mb-2"
+                             draggable="true"
+                             @dragstart="handleDragStart($event, ticket)"
+                             @dragend="handleDragEnd">
+                            <div class="card card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold" x-text="ticket.reference"></span>
+                                        <span class="badge ms-1" :class="{
+                                            'bg-danger': ticket.priority === 'CRITICAL',
+                                            'bg-warning': ticket.priority === 'HIGH',
+                                            'bg-info': ticket.priority === 'MEDIUM',
+                                            'bg-secondary': ticket.priority === 'LOW'
+                                        }" x-text="ticket.priority_display"></span>
+                                    </div>
+                                    <small class="text-muted" x-text="formatDate(ticket.created_at)"></small>
+                                </div>
+                                <p class="mb-1 small text-truncate" x-text="ticket.title"></p>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted" x-text="ticket.created_by.username"></span>
+                                    <span x-show="ticket.assigned_to">
+                                        <i class="fas fa-user"></i> 
+                                        <span x-text="ticket.assigned_to.username"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tickets.length === 0" class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                        Aucun ticket
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESOLVED -->
+        <div class="col-md-3">
+            <div class="kanban-column"
+                 x-data="column('RESOLVED')"
+                 @dragover.prevent="dragOver = true"
+                 @dragleave="dragOver = false"
+                 @drop="handleDrop($event, 'RESOLVED')"
+                 :class="{ 'drag-over': dragOver }">
+                <div class="kanban-header">
+                    <div class="kanban-column-title">
+                        <span class="badge bg-success">🟢</span>
+                        Résolus
+                        <span class="ticket-count" x-text="tickets.length"></span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <template x-for="ticket in tickets" :key="ticket.id">
+                        <div class="kanban-card mb-2"
+                             draggable="true"
+                             @dragstart="handleDragStart($event, ticket)"
+                             @dragend="handleDragEnd">
+                            <div class="card card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold" x-text="ticket.reference"></span>
+                                        <span class="badge ms-1" :class="{
+                                            'bg-danger': ticket.priority === 'CRITICAL',
+                                            'bg-warning': ticket.priority === 'HIGH',
+                                            'bg-info': ticket.priority === 'MEDIUM',
+                                            'bg-secondary': ticket.priority === 'LOW'
+                                        }" x-text="ticket.priority_display"></span>
+                                    </div>
+                                    <small class="text-muted" x-text="formatDate(ticket.created_at)"></small>
+                                </div>
+                                <p class="mb-1 small text-truncate" x-text="ticket.title"></p>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted" x-text="ticket.created_by.username"></span>
+                                    <span x-show="ticket.assigned_to">
+                                        <i class="fas fa-user"></i> 
+                                        <span x-text="ticket.assigned_to.username"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tickets.length === 0" class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                        Aucun ticket
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CLOSED -->
+        <div class="col-md-3">
+            <div class="kanban-column"
+                 x-data="column('CLOSED')"
+                 @dragover.prevent="dragOver = true"
+                 @dragleave="dragOver = false"
+                 @drop="handleDrop($event, 'CLOSED')"
+                 :class="{ 'drag-over': dragOver }">
+                <div class="kanban-header">
+                    <div class="kanban-column-title">
+                        <span class="badge bg-dark">⚫</span>
+                        Fermés
+                        <span class="ticket-count" x-text="tickets.length"></span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <template x-for="ticket in tickets" :key="ticket.id">
+                        <div class="kanban-card mb-2"
+                             draggable="true"
+                             @dragstart="handleDragStart($event, ticket)"
+                             @dragend="handleDragEnd">
+                            <div class="card card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold" x-text="ticket.reference"></span>
+                                        <span class="badge ms-1" :class="{
+                                            'bg-danger': ticket.priority === 'CRITICAL',
+                                            'bg-warning': ticket.priority === 'HIGH',
+                                            'bg-info': ticket.priority === 'MEDIUM',
+                                            'bg-secondary': ticket.priority === 'LOW'
+                                        }" x-text="ticket.priority_display"></span>
+                                    </div>
+                                    <small class="text-muted" x-text="formatDate(ticket.created_at)"></small>
+                                </div>
+                                <p class="mb-1 small text-truncate" x-text="ticket.title"></p>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted" x-text="ticket.created_by.username"></span>
+                                    <span x-show="ticket.assigned_to">
+                                        <i class="fas fa-user"></i> 
+                                        <span x-text="ticket.assigned_to.username"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tickets.length === 0" class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                        Aucun ticket
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function kanban() {
+    return {
+        // Données initiales des colonnes
+        columns: {
+            'OPEN': JSON.parse('{{ tickets_by_status.OPEN|safe|escapejs }}'),
+            'IN_PROGRESS': JSON.parse('{{ tickets_by_status.IN_PROGRESS|safe|escapejs }}'),
+            'RESOLVED': JSON.parse('{{ tickets_by_status.RESOLVED|safe|escapejs }}'),
+            'CLOSED': JSON.parse('{{ tickets_by_status.CLOSED|safe|escapejs }}')
+        },
+        dragTicket: null,
+        
+        init() {
+            // Initialiser les colonnes
+            for (const [status, tickets] of Object.entries(this.columns)) {
+                this.columns[status] = tickets;
+            }
+        },
+        
+        column(status) {
+            return {
+                status: status,
+                dragOver: false,
+                tickets: this.columns[status] || [],
+                
+                handleDragStart(event, ticket) {
+                    this.dragTicket = ticket;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', JSON.stringify(ticket));
+                    setTimeout(() => {
+                        event.target.classList.add('dragging');
+                    }, 0);
+                },
+                
+                handleDragEnd(event) {
+                    event.target.classList.remove('dragging');
+                    this.dragTicket = null;
+                },
+                
+                handleDrop(event, newStatus) {
+                    event.preventDefault();
+                    this.dragOver = false;
+                    
+                    const ticketData = JSON.parse(event.dataTransfer.getData('text/plain'));
+                    const ticketId = ticketData.id;
+                    
+                    // Vérifier si le statut a changé
+                    const oldStatus = ticketData.status;
+                    if (oldStatus === newStatus) return;
+                    
+                    // Envoyer la requête de changement de statut
+                    fetch(`/api/tickets/${ticketId}/drag-drop/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': this.getCookie('csrftoken')
+                        },
+                        body: `status=${newStatus}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mettre à jour les données
+                            this.tickets = this.tickets.filter(t => t.id !== ticketId);
+                            const targetColumn = this.$parent.columns[newStatus];
+                            if (targetColumn) {
+                                ticketData.status = newStatus;
+                                targetColumn.push(ticketData);
+                            }
+                            showToast('Ticket déplacé avec succès', 'success');
+                        } else {
+                            showToast(data.error || 'Erreur lors du déplacement', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Erreur lors du déplacement', 'error');
+                        console.error(error);
+                    });
+                },
+                
+                getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+            }
+        },
+        
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        }
+    }
+}
+
+// Toast notification system
+function showToast(message, type = 'success') {
+    const colors = {
+        success: 'bg-success text-white',
+        error: 'bg-danger text-white',
+        warning: 'bg-warning text-dark',
+        info: 'bg-info text-dark'
+    };
+    
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center ${colors[type]} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = 9999;
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}

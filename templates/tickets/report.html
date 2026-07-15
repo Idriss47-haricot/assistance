@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Génération de rapports - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .report-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 30px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+    .report-icon {
+        font-size: 2.5rem;
+        color: #007bff;
+        margin-bottom: 15px;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        padding: 10px 15px;
+        border: 2px solid #e9ecef;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.15);
+    }
+    .btn-generate {
+        padding: 12px 40px;
+        border-radius: 10px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+        transition: all 0.3s;
+    }
+    .btn-generate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,123,255,0.3);
+    }
+    .format-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .format-option:hover {
+        border-color: #007bff;
+        background: #f8f9fa;
+    }
+    .format-option input[type="radio"] {
+        accent-color: #007bff;
+        width: 18px;
+        height: 18px;
+    }
+    .format-option.active {
+        border-color: #007bff;
+        background: #e9f0ff;
+    }
+    .report-type-card {
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+    }
+    .report-type-card:hover {
+        border-color: #007bff;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .report-type-card.selected {
+        border-color: #007bff;
+        background: #e9f0ff;
+    }
+    .report-type-card i {
+        font-size: 2rem;
+        color: #007bff;
+        display: block;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-chart-bar text-primary"></i> 
+            Génération de rapports
+        </h1>
+        <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+    </div>
+
+    <div class="report-card">
+        <div class="text-center">
+            <div class="report-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>Rapport de performance</h3>
+            <p class="text-muted">Générez un rapport détaillé sur la performance des techniciens et les statistiques des tickets</p>
+        </div>
+
+        <form method="GET" action="{% url 'tickets:report_generate' %}" target="_blank" class="mt-4">
+            <!-- Période -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-calendar-alt"></i> Date de début
+                    </label>
+                    <input type="date" name="start_date" class="form-control" 
+                           value="{{ last_month|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-calendar-alt"></i> Date de fin
+                    </label>
+                    <input type="date" name="end_date" class="form-control" 
+                           value="{{ today|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <!-- Technicien -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-user-cog"></i> Technicien
+                </label>
+                <select name="technician_id" class="form-select">
+                    <option value="">Tous les techniciens</option>
+                    {% for tech in technicians %}
+                    <option value="{{ tech.id }}">
+                        {{ tech.get_full_name|default:tech.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Type de rapport -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-chart-pie"></i> Type de rapport
+                </label>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <div class="report-type-card selected" onclick="selectReportType(this)">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Performance</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="report-type-card" onclick="selectReportType(this)">
+                            <i class="fas fa-tasks"></i>
+                            <span>Activité</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="report-type-card" onclick="selectReportType(this)">
+                            <i class="fas fa-smile"></i>
+                            <span>Satisfaction</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Format d'export -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-file-export"></i> Format d'export
+                </label>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="format-option active">
+                            <input type="radio" name="format" value="html" checked>
+                            <i class="fas fa-code"></i> HTML
+                        </label>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="format-option">
+                            <input type="radio" name="format" value="pdf">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </label>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="format-option">
+                            <input type="radio" name="format" value="csv">
+                            <i class="fas fa-file-excel"></i> CSV
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton de génération -->
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-generate text-white">
+                    <i class="fas fa-file-export"></i> Générer le rapport
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Informations -->
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h6 class="text-muted">📊 Données en temps réel</h6>
+                <p class="small">Les rapports sont générés à partir des données actuelles</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h6 class="text-muted">📁 Export multiple</h6>
+                <p class="small">Exportez en HTML, PDF ou CSV</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h6 class="text-muted">🔒 Sécurisé</h6>
+                <p class="small">Accessible uniquement aux managers et administrateurs</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectReportType(el) {
+    document.querySelectorAll('.report-type-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+// Sélection des formats
+document.querySelectorAll('.format-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+        document.querySelectorAll('.format-option').forEach(o => o.classList.remove('active'));
+        this.classList.add('active');
+        this.querySelector('input[type="radio"]').checked = true;
+    });
+});
+</script>
+{% endblock %}

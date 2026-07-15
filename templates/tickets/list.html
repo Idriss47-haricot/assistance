@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Liste des tickets - Helpdesk{% endblock %}
+
+{% block content %}
+<div x-data="ticketList()" x-init="init()">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-list text-primary"></i> 
+            Tickets
+            <span class="badge bg-secondary ms-2">{{ tickets.paginator.count }}</span>
+        </h1>
+        <div>
+            <a href="{% url 'tickets:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Nouveau ticket
+            </a>
+            
+            <!-- ✅ BOUTON EXPORT TOUS LES TICKETS EN PDF -->
+            <a href="{% url 'tickets:export_all_pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
+               target="_blank" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exporter tous les tickets
+            </a>
+        </div>
+    </div>
+    
+    <!-- Statistiques -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-2">
+            <div class="card bg-light text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0 text-muted">Total</h6>
+                    <h3 class="mb-0">{{ stats.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card bg-secondary text-white text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0">Ouvert</h6>
+                    <h3 class="mb-0">{{ stats.open }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0">En cours</h6>
+                    <h3 class="mb-0">{{ stats.in_progress }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0">Résolu</h6>
+                    <h3 class="mb-0">{{ stats.resolved }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card bg-dark text-white text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0">Fermé</h6>
+                    <h3 class="mb-0">{{ stats.closed }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card bg-danger text-white text-center">
+                <div class="card-body py-2">
+                    <h6 class="mb-0">Critique</h6>
+                    <h3 class="mb-0">{{ stats.critical }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtres de recherche -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> Filtres de recherche
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3" x-data="searchForm()">
+                <div class="col-md-4">
+                    {{ search_form.search.label_tag }}
+                    {{ search_form.search }}
+                </div>
+                <div class="col-md-2">
+                    {{ search_form.status.label_tag }}
+                    {{ search_form.status }}
+                </div>
+                <div class="col-md-2">
+                    {{ search_form.priority.label_tag }}
+                    {{ search_form.priority }}
+                </div>
+                <div class="col-md-4">
+                    {{ search_form.category.label_tag }}
+                    {{ search_form.category }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.assigned_to.label_tag }}
+                    {{ search_form.assigned_to }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.date_from.label_tag }}
+                    {{ search_form.date_from }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.date_to.label_tag }}
+                    {{ search_form.date_to }}
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Rechercher
+                    </button>
+                    <a href="{% url 'tickets:list' %}" class="btn btn-outline-secondary ms-2">
+                        <i class="fas fa-undo"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Liste des tickets -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Référence</th>
+                            <th>Titre</th>
+                            <th style="width: 120px;">Catégorie</th>
+                            <th style="width: 100px;">Priorité</th>
+                            <th style="width: 120px;">Statut</th>
+                            <th style="width: 150px;">Assigné à</th>
+                            <th style="width: 150px;">Créé le</th>
+                            <th style="width: 160px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in tickets %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'tickets:detail' ticket.id %}" class="fw-bold">
+                                    {{ ticket.reference }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{% url 'tickets:detail' ticket.id %}" class="text-decoration-none">
+                                    {{ ticket.title|truncatechars:50 }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ ticket.get_category_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if ticket.priority == 'CRITICAL' %}danger{% elif ticket.priority == 'HIGH' %}warning{% elif ticket.priority == 'MEDIUM' %}info{% else %}secondary{% endif %}">
+                                    {{ ticket.get_priority_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if ticket.status == 'OPEN' %}secondary{% elif ticket.status == 'IN_PROGRESS' %}primary{% elif ticket.status == 'RESOLVED' %}success{% else %}dark{% endif %}">
+                                    {{ ticket.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if ticket.assigned_to %}
+                                    <span class="badge bg-light text-dark">
+                                        <i class="fas fa-user"></i>
+                                        {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">Non assigné</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ ticket.created_at|date:"d/m/Y H:i" }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'tickets:detail' ticket.id %}" 
+                                       class="btn btn-outline-primary" 
+                                       data-bs-toggle="tooltip" 
+                                       title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if is_admin or is_technician %}
+                                    <a href="{% url 'tickets:edit' ticket.id %}" 
+                                       class="btn btn-outline-secondary"
+                                       data-bs-toggle="tooltip" 
+                                       title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                    <!-- ✅ BOUTON EXPORT PDF INDIVIDUEL -->
+                                    <a href="{% url 'tickets:export_single_pdf' ticket.id %}" 
+                                       target="_blank" 
+                                       class="btn btn-outline-danger"
+                                       data-bs-toggle="tooltip" 
+                                       title="Exporter en PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
+                                <p class="text-muted">Aucun ticket trouvé</p>
+                                <a href="{% url 'tickets:create' %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus-circle"></i> Créer un ticket
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        {% if tickets.has_other_pages %}
+        <div class="card-footer">
+            <nav aria-label="Navigation des tickets">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if tickets.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in tickets.paginator.page_range %}
+                        {% if tickets.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > tickets.number|add:'-3' and num < tickets.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if tickets.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function ticketList() {
+    return {
+        init() {
+            // Initialiser les tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    }
+}
+
+function searchForm() {
+    return {
+        // Auto-submit après délai (optionnel)
+    }
+}
+</script>
+{% endblock %}

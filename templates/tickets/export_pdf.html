@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Liste des tickets - Helpdesk</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            padding: 20px;
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .filter-info {
+            text-align: center;
+            font-size: 11px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            padding: 6px 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        td {
+            padding: 4px;
+            border: 1px solid #ddd;
+            text-align: center;
+            vertical-align: middle;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .priority-critical {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .priority-high {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .priority-medium {
+            color: #17a2b8;
+        }
+        .priority-low {
+            color: #6c757d;
+        }
+        .status-open {
+            color: #6c757d;
+        }
+        .status-in_progress {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .status-resolved {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-closed {
+            color: #343a40;
+        }
+        .footer {
+            text-align: center;
+            font-size: 9px;
+            color: #6c757d;
+            margin-top: 15px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        .badge-critical {
+            background: #dc3545;
+            color: white;
+        }
+        .badge-high {
+            background: #ffc107;
+            color: black;
+        }
+        .badge-medium {
+            background: #17a2b8;
+            color: white;
+        }
+        .badge-low {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Liste des tickets</h1>
+    
+    <div class="filter-info">
+        Total: {{ total }} tickets
+        {% if status_filter != 'Tous' %} | Statut: {{ status_filter }}{% endif %}
+        {% if priority_filter != 'Toutes' %} | Priorité: {{ priority_filter }}{% endif %}
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">Réf.</th>
+                <th style="width: 20%;">Titre</th>
+                <th style="width: 10%;">Catégorie</th>
+                <th style="width: 10%;">Priorité</th>
+                <th style="width: 12%;">Statut</th>
+                <th style="width: 12%;">Créé par</th>
+                <th style="width: 12%;">Assigné à</th>
+                <th style="width: 16%;">Créé le</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td><strong>{{ ticket.reference }}</strong></td>
+                <td style="text-align: left;">{{ ticket.title|truncatechars:40 }}</td>
+                <td>{{ ticket.get_category_display }}</td>
+                <td class="priority-{{ ticket.priority|lower }}">
+                    {{ ticket.get_priority_display }}
+                </td>
+                <td class="status-{{ ticket.status|lower }}">
+                    {{ ticket.get_status_display }}
+                </td>
+                <td>{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</td>
+                <td>{% if ticket.assigned_to %}{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% else %}-{% endif %}</td>
+                <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 20px; color: #6c757d;">
+                    Aucun ticket trouvé
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Généré le {{ date|date:"d/m/Y à H:i" }} | Helpdesk v1.0 | Page <span class="page"></span> sur <span class="topage"></span>
+    </div>
+</body>
+</html>
