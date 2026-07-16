@@ -87,21 +87,22 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-sm);
     padding: 0 1.5rem;
 }
+
 .navbar-brand {
     font-weight: 700;
     font-size: 1.125rem;
-    color: var(--gray-900) !important;
+    color: #fff !important;
     letter-spacing: -0.01em;
 }
 
 .navbar-brand i {
     margin-right: 0.5rem;
-    color: var(--primary-color);
+    color: #fff;
 }
 
 .nav-link {
     font-weight: 500;
-    color: var(--gray-600) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
     border-radius: var(--radius-sm);
     padding: 0.5rem 0.875rem !important;
     transition: background-color var(--transition), color var(--transition);
