@@ -82,7 +82,7 @@ h1, h2, h3, h4, h5, h6 {
    ============================================ */
 .navbar {
     height: var(--navbar-height);
-    background-color: #fff !important;
+    background-color: var(--primary-color) !important;
     border-bottom: 1px solid var(--gray-200);
     box-shadow: var(--shadow-sm);
     padding: 0 1.5rem;
