@@ -191,26 +191,74 @@
         </main>
         
         <!-- Footer -->
-        <footer class="footer mt-auto py-3 bg-light border-top">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-6">
-                        <span class="text-muted">
-                            &copy; {% now "Y" %} Helpdesk - Version 1.0.0
-                        </span>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <span class="text-muted">
-                            <i class="fas fa-clock"></i> 
-                            <span x-data="{ time: new Date().toLocaleString() }" 
-                                  x-init="setInterval(() => time = new Date().toLocaleString(), 1000)" 
-                                  x-text="time">
-                            </span>
-                        </span>
-                    </div>
-                </div>
+        <!-- Footer -->
+<footer class="footer mt-auto pt-5 pb-4" style="background-color: #111827; color: rgba(255,255,255,0.75);">
+    <div class="container-fluid">
+        <div class="row gy-4">
+            <!-- Colonne 1 : À propos -->
+            <div class="col-md-4">
+                <h6 class="text-white fw-bold mb-3">
+                    <i class="fas fa-ticket-alt"></i> Helpdesk
+                </h6>
+                <p class="small mb-0">
+                    Application de gestion de tickets d'incidents, permettant aux
+                    employés de signaler leurs problèmes et à l'équipe support
+                    de les traiter efficacement.
+                </p>
             </div>
-        </footer>
+
+            <!-- Colonne 2 : Liens rapides -->
+            <div class="col-md-4">
+                <h6 class="text-white fw-bold mb-3">Liens rapides</h6>
+                <ul class="list-unstyled small">
+                    <li class="mb-2">
+                        <a href="{% url 'home' %}" class="text-decoration-none" style="color: rgba(255,255,255,0.75);">
+                            <i class="fas fa-home"></i> Accueil
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{% url 'tickets:list' %}" class="text-decoration-none" style="color: rgba(255,255,255,0.75);">
+                            <i class="fas fa-list"></i> Mes tickets
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{% url 'tickets:create' %}" class="text-decoration-none" style="color: rgba(255,255,255,0.75);">
+                            <i class="fas fa-plus-circle"></i> Nouveau ticket
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Colonne 3 : Statut / horloge -->
+            <div class="col-md-4">
+                <h6 class="text-white fw-bold mb-3">Statut du système</h6>
+                <p class="small mb-2">
+                    <span class="badge bg-success">
+                        <i class="fas fa-circle"></i> En ligne
+                    </span>
+                </p>
+                <p class="small mb-0">
+                    <i class="fas fa-clock"></i>
+                    <span x-data="{ time: new Date().toLocaleString() }"
+                          x-init="setInterval(() => time = new Date().toLocaleString(), 1000)"
+                          x-text="time">
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <hr class="my-4" style="border-color: rgba(255,255,255,0.15);">
+
+        <div class="row align-items-center">
+            <div class="col-md-6 small">
+                &copy; {% now "Y" %} Helpdesk — Tous droits réservés — Version 1.0.0
+            </div>
+            <div class="col-md-6 text-md-end small">
+                Développé par 
+            </div>
+        </div>
+    </div>
+</footer>
     </div>
     
     <!-- Bootstrap JS -->
