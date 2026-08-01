@@ -478,7 +478,7 @@ def ticket_take(request, pk):
     """
     ticket = get_object_or_404(Ticket, pk=pk)
     
-    if not request.user.is_staff:
+    if not request.user.is_technician:
         messages.error(request, 'Vous n\'avez pas la permission de prendre ce ticket.')
         return redirect('tickets:detail', pk=ticket.id)
     
@@ -1427,7 +1427,7 @@ def ticket_assign_mass(request):
             return redirect('tickets:assign_mass')
         
         try:
-            technician = User.objects.get(id=technician_id, is_staff=True)
+            technician = User.objects.get(id=technician_id, role__in=['TECHNICIAN', 'MANAGER', 'ADMIN'])
             tickets = Ticket.objects.filter(id__in=ticket_ids)
             
             count = 0
@@ -1450,7 +1450,7 @@ def ticket_assign_mass(request):
         return redirect('tickets:list')
     
     # GET : Afficher le formulaire
-    technicians = User.objects.filter(is_staff=True, is_active=True)
+    technicians = User.objects.filter(role__in=['TECHNICIAN', 'MANAGER', 'ADMIN'], is_active=True)
     unassigned_tickets = Ticket.objects.filter(assigned_to__isnull=True, status='OPEN')
     
     context = {
