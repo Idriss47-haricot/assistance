@@ -82,6 +82,21 @@ class NotificationService:
                     type='ASSIGNED',
                     message=message
                 )
+
+    @classmethod
+    def notify_comment_added(cls, comment):
+        """
+        Notifier quand un commentaire est ajouté
+        """
+        if comment.ticket.assigned_to:
+            message = f"💬 Commentaire de {comment.user.get_full_name() or comment.user.username} sur #{comment.ticket.reference}"
+            Notification.create_notification(
+                user=comment.ticket.assigned_to,
+                ticket=comment.ticket,
+                type='COMMENT_ADDED',
+                message=message,
+                sound='notification-comment.mp3'
+            )
     
     @classmethod
     def get_unread_count(cls, user):
