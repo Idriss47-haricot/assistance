@@ -499,7 +499,7 @@ def ticket_take(request, pk):
     
     # Notification
     from .notifications import NotificationService
-    NotificationService.notify_ticket_taken(ticket, request.user)
+    NotificationService.notify_assigned(ticket, request.user)
     
     messages.success(request, f'Vous avez pris le ticket #{ticket.reference}!')
     return redirect('tickets:detail', pk=ticket.id)
